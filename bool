@@ -1,0 +1,114 @@
+🌐 Local Web Server — KDE Plasma Konsole
+
+A step-by-step guide to spinning up a local web server on a Debian/Ubuntu-based Linux system using Python and Nginx, built entirely from the terminal.
+
+
+📋 Table of Contents
+
+Overview
+Prerequisites
+Phase 1 — Python Quick Server
+Phase 2 — Nginx Production Server
+Management Commands
+Troubleshooting
+Next Steps
+
+
+Overview
+This project walks through two approaches to running a local web server from the terminal:
+MethodBest ForPortPython http.serverQuick file serving, HTML testing8080NginxMulti-site hosting, logging, production-style config8081
+
+Prerequisites
+
+KDE Plasma on a Debian/Ubuntu-based distro (e.g. KDE Neon, Kubuntu)
+python3 installed (comes pre-installed on most distros)
+sudo privileges
+
+
+Not sure which distro you're on?
+bashcat /etc/os-release
+
+DistroPackage ManagerUbuntu, Debian, KDE NeonaptArch, ManjaropacmanFedoradnfopenSUSEzypper
+
+Phase 1 — Python Quick Server
+Up and running in seconds. Great for serving static files or testing HTML locally.
+1. Create your project folder
+bashmkdir ~/my-webserver && cd ~/my-webserver
+2. Create a sample HTML page
+bashcat > index.html << 'EOF'
+<!DOCTYPE html>
+<html>
+  <head><title>My Local Server</title></head>
+  <body><h1>Hello from Konsole!</h1></body>
+</html>
+EOF
+3. Start the server
+bashpython3 -m http.server 8080
+4. Open in your browser
+http://localhost:8080
+Press Ctrl+C to stop the server.
+
+Phase 2 — Nginx Production Server
+More control — supports custom routes, logging, and multiple virtual hosts.
+1. Install Nginx
+bashsudo apt install nginx -y
+2. Create your site directory
+bashsudo mkdir -p /var/www/mysite
+sudo chown $USER:$USER /var/www/mysite
+echo "<h1>My Nginx Site</h1>" > /var/www/mysite/index.html
+3. Create the Nginx config
+bashsudo tee /etc/nginx/sites-available/mysite > /dev/null << 'EOF'
+server {
+    listen 8081;
+    server_name localhost;
+
+    root /var/www/mysite;
+    index index.html;
+
+    location / {
+        try_files $uri $uri/ =404;
+    }
+
+    access_log /var/log/nginx/mysite_access.log;
+    error_log  /var/log/nginx/mysite_error.log;
+}
+EOF
+4. Enable the site
+bashsudo ln -s /etc/nginx/sites-available/mysite /etc/nginx/sites-enabled/
+5. Test and restart Nginx
+bashsudo nginx -t
+sudo systemctl restart nginx
+Expected output:
+nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+6. Open in your browser
+http://localhost:8081
+
+Management Commands
+TaskCommandCheck Nginx statussudo systemctl status nginxWatch access logs livesudo tail -f /var/log/nginx/mysite_access.logReload config (no downtime)sudo systemctl reload nginxStop serversudo systemctl stop nginxStart serversudo systemctl start nginx
+
+Troubleshooting
+❌ open() failed (2: No such file or directory)
+The symlink was created before the config file existed. Fix it with:
+bash# Remove the broken symlink
+sudo rm -f /etc/nginx/sites-enabled/mysite
+
+# Recreate the config (see Phase 2, Step 3)
+# Then re-enable:
+sudo ln -s /etc/nginx/sites-available/mysite /etc/nginx/sites-enabled/
+sudo nginx -t
+sudo systemctl restart nginx
+❌ pacman: command not found
+You're on a Debian/Ubuntu system. Use apt instead of pacman:
+bashsudo apt install nginx -y
+❌ Port already in use
+Check what's using the port:
+bashsudo ss -tulpn | grep 8081
+Then either kill the process or change the port in your Nginx config.
+
+Next Steps
+
+🗂️ Serve a React/Vue app — point root to your dist/ build folder
+🌍 Add a custom local domain — edit /etc/hosts to map mysite.local → 127.0.0.1
+🔒 Enable local HTTPS — use mkcert to generate a trusted SSL cert
+⚙️ Auto-start on boot — sudo systemctl enable nginx
